@@ -4,9 +4,13 @@
 
 ![鹈鹕骑车预览](docs/preview.jpg)
 
+## 在线试玩
+
+打开 <https://duegin.github.io/pelican-bike-3d/> 就能玩，手机也可以。
+
 ## 直接打开
 
-双击 `pelican-on-a-bike.html`，用最新版 Chrome、Edge 或 Safari 打开即可，不需要联网，也不需要安装任何东西。点“出发”后会有声音，右下角可以关掉。
+也可以下载后双击 `pelican-on-a-bike.html`，用最新版 Chrome、Edge 或 Safari 打开，不需要联网，也不需要安装任何东西。点“出发”后会有声音，右下角可以关掉。
 
 ## 怎么玩
 
