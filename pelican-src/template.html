@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>鹈鹕骑车</title>
+<meta name="description" content="一只戴头盔的鹈鹕，骑着薄荷色自行车环岛兜风。可交互的 3D 场景。">
+<style>
+:root {
+  color-scheme: light;
+  --feather: #F4F6F4;
+  --pouch: #F2B33D;
+  --tide: #12313B;
+  --lcd: #C5D3BD;
+  --ink: #17231C;
+  --breton: #1F2F5A;
+  --mint: #5FB8A6;
+  --serif: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", "SimSun", serif;
+  --sans: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --digits: "DIN Alternate", "DIN Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--tide); font-family: var(--sans); color: var(--feather); -webkit-font-smoothing: antialiased; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--pouch); outline-offset: 2px; }
+
+/* ---------- 加载 ---------- */
+#loader { position: fixed; inset: 0; z-index: 50; background: var(--tide); display: grid; place-items: center; transition: opacity .8s ease; }
+#loader.done { opacity: 0; pointer-events: none; }
+#loader[hidden] { display: none; }
+#loader .mark { display: flex; gap: 28px; align-items: flex-start; }
+#loader .mark h2 { writing-mode: vertical-rl; font-family: var(--serif); font-weight: 600; font-size: 56px; letter-spacing: .14em; margin: 0; }
+#loader-text { writing-mode: vertical-rl; font-size: 14px; letter-spacing: .2em; opacity: .75; margin: 6px 0 0; }
+#loader .wheel { width: 44px; height: 44px; border: 3px solid var(--pouch); border-radius: 50%; position: relative; animation: spin 1.1s linear infinite; margin-top: 8px; }
+#loader .wheel::before, #loader .wheel::after { content: ""; position: absolute; left: 50%; top: 3px; bottom: 3px; width: 2px; margin-left: -1px; background: var(--pouch); }
+#loader .wheel::after { transform: rotate(90deg); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- 竖排标题 ---------- */
+#title { position: fixed; top: max(26px, env(safe-area-inset-top)); left: max(26px, env(safe-area-inset-left)); z-index: 5; display: flex; gap: 12px; align-items: flex-start; pointer-events: none;
+  opacity: 0; transform: translateY(-8px); transition: opacity 1.2s ease 1.6s, transform 1.2s ease 1.6s; }
+body.ready #title { opacity: 1; transform: none; }
+#title h1 { writing-mode: vertical-rl; margin: 0; font-family: var(--serif); font-weight: 700; font-size: clamp(40px, 6.2vw, 76px); line-height: 1; letter-spacing: .12em;
+  color: var(--feather); text-shadow: 0 2px 18px rgba(8, 30, 38, .35); }
+#title .sub { writing-mode: vertical-rl; margin: 4px 0 0; font-size: 13px; letter-spacing: .28em; line-height: 1.6; opacity: .88; text-shadow: 0 1px 8px rgba(8, 30, 38, .5); }
+#title .rule { width: 1px; align-self: stretch; background: linear-gradient(var(--feather), transparent); opacity: .55; margin-top: 6px; }
+
+/* ---------- 出发 ---------- */
+#intro { position: fixed; left: max(30px, env(safe-area-inset-left)); bottom: max(40px, 7vh); z-index: 6; text-align: left; max-width: 460px; transition: opacity .6s ease, transform .6s ease;
+  opacity: 0; transform: translateY(10px); }
+body.ready #intro { opacity: 1; transform: none; transition-delay: 2.4s; }
+body.ready #intro.leaving { opacity: 0; transform: translateY(16px); transition-delay: 0s; }
+#intro p { margin: 0 0 18px; font-size: 17px; line-height: 1.7; text-shadow: 0 1px 12px rgba(8, 30, 38, .6); }
+#intro .small { margin: 14px 0 0; font-size: 12px; opacity: .78; }
+#btn-start { border: 0; background: var(--pouch); color: var(--tide); font-weight: 700; font-size: 20px; letter-spacing: .3em; text-indent: .3em; padding: 14px 44px; border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(242, 179, 61, .35), inset 0 -3px 0 rgba(0, 0, 0, .12); transition: transform .15s ease, box-shadow .15s ease; }
+#btn-start:hover { transform: translateY(-1px); box-shadow: 0 14px 34px rgba(242, 179, 61, .45), inset 0 -3px 0 rgba(0, 0, 0, .12); }
+#btn-start:active { transform: translateY(1px); }
+
+/* ---------- 码表 ---------- */
+#computer { position: fixed; top: max(22px, env(safe-area-inset-top)); right: max(22px, env(safe-area-inset-right)); z-index: 5; width: 204px;
+  opacity: 0; transform: translateY(-10px); transition: opacity .9s ease 1.2s, transform .9s ease 1.2s; }
+body.ready #computer { opacity: 1; transform: none; }
+.bezel { position: relative; padding: 13px 12px 18px; border-radius: 26px 26px 32px 32px; background: linear-gradient(160deg, #2c3432, #151a19 60%, #0f1312);
+  box-shadow: 0 18px 40px rgba(5, 20, 25, .45), inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 -2px 0 rgba(0, 0, 0, .4); }
+.bezel::before, .bezel::after { content: ""; position: absolute; top: 44px; width: 5px; height: 26px; border-radius: 3px; background: #0c0f0e; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1); }
+.bezel::before { left: -4px; } .bezel::after { right: -4px; }
+.brand { text-align: center; font-size: 9px; letter-spacing: .4em; color: rgba(255, 255, 255, .35); margin-top: 7px; text-indent: .4em; }
+.screen { position: relative; border-radius: 12px; padding: 9px 12px 8px; color: var(--ink);
+  background: radial-gradient(120% 90% at 30% 10%, #d3dfcb, var(--lcd) 55%, #b3c3aa); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(0, 0, 0, .25);
+  transition: background .8s ease, box-shadow .8s ease; }
+body.night .screen { background: radial-gradient(120% 90% at 30% 10%, #bff3e6, #8fdcc9 55%, #6cc3b0); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .3), 0 0 26px rgba(120, 230, 205, .35); }
+.row { display: flex; justify-content: space-between; align-items: baseline; }
+.lab { font-size: 11px; letter-spacing: .08em; opacity: .75; }
+.unit { font-family: var(--digits); font-size: 11px; opacity: .7; margin-left: 3px; }
+.big { position: relative; font-family: var(--digits); font-weight: 700; font-size: 58px; line-height: 1; text-align: right; font-variant-numeric: tabular-nums; margin: 2px 0 4px; letter-spacing: -.01em; }
+.big .ghost { position: absolute; right: 0; opacity: .045; }
+#spd { position: relative; }
+.stats { border-top: 1px solid rgba(23, 35, 28, .22); padding-top: 5px; gap: 6px; }
+.stats > div { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.unit.n { display: none; }
+.stats b, .bottom b { font-family: var(--digits); font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
+#map { display: block; width: 100%; aspect-ratio: 4 / 3; margin: 6px 0 4px; image-rendering: pixelated; border-top: 1px dashed rgba(23, 35, 28, .25); border-bottom: 1px dashed rgba(23, 35, 28, .25); }
+.bottom { font-size: 11px; }
+#coast { opacity: 0; font-size: 11px; padding: 1px 6px; border: 1px solid currentColor; border-radius: 4px; transition: opacity .2s; }
+#coast.on { opacity: .85; }
+
+/* ---------- 电影镜头名 ---------- */
+#shot { position: fixed; top: max(28px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 5; font-family: var(--serif); font-size: 15px; letter-spacing: .3em;
+  opacity: 0; text-shadow: 0 1px 10px rgba(8, 30, 38, .6); pointer-events: none; }
+#shot.flash { animation: shot 3.2s ease forwards; }
+@keyframes shot { 0% { opacity: 0; } 15% { opacity: .95; } 70% { opacity: .95; } 100% { opacity: 0; } }
+
+/* ---------- 底部控制条 ---------- */
+#dock { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translate(-50%, 20px); z-index: 6; display: flex; align-items: center; gap: 6px;
+  padding: 7px; border-radius: 18px; background: rgba(18, 49, 59, .74); backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 12px 34px rgba(5, 20, 25, .35), inset 0 1px 0 rgba(255, 255, 255, .08); font-size: 13px; opacity: 0; pointer-events: none;
+  transition: opacity .6s ease .3s, transform .6s ease .3s, visibility 0s linear .9s; max-width: calc(100vw - 24px); visibility: hidden; }
+body.started #dock { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; visibility: visible; transition: opacity .6s ease .3s, transform .6s ease .3s, visibility 0s; }
+#dock button, #touch button, #btn-start { touch-action: manipulation; }
+#touch { -webkit-touch-callout: none; }
+.seg { display: flex; background: rgba(0, 0, 0, .22); border-radius: 12px; padding: 3px; }
+.seg button { border: 0; background: none; padding: 7px 11px; border-radius: 9px; white-space: nowrap; opacity: .85; transition: background .2s, color .2s; }
+.seg button:hover { opacity: 1; background: rgba(255, 255, 255, .08); }
+.seg button[aria-pressed="true"] { background: var(--pouch); color: var(--tide); opacity: 1; font-weight: 600; }
+.divider { width: 1px; height: 26px; background: rgba(255, 255, 255, .14); margin: 0 4px; }
+.slider { display: flex; align-items: center; gap: 7px; padding: 0 4px; white-space: nowrap; }
+.slider span { opacity: .75; }
+.slider output { font-family: var(--digits); font-variant-numeric: tabular-nums; min-width: 38px; font-size: 14px; }
+#cruise-out { min-width: 58px; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 108px; height: 22px; background: transparent; margin: 0; }
+input[type=range]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: linear-gradient(90deg, rgba(244, 246, 244, .25), rgba(244, 246, 244, .55)); }
+input[type=range]::-moz-range-track { height: 3px; border-radius: 2px; background: rgba(244, 246, 244, .4); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--pouch); margin-top: -6.5px; border: 2px solid var(--tide); box-shadow: 0 0 0 1px rgba(242, 179, 61, .5); }
+input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--pouch); border: 2px solid var(--tide); }
+#time { background: linear-gradient(90deg, #22325a 0%, #e89a6a 26%, #bfe0f0 40%, #bfe0f0 66%, #f0a070 76%, #22325a 90%) center / 100% 3px no-repeat; }
+#time::-webkit-slider-runnable-track { background: transparent; }
+.tool { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 7px 9px; border-radius: 10px; white-space: nowrap; opacity: .9; }
+.tool:hover { background: rgba(255, 255, 255, .08); opacity: 1; }
+.tool svg { width: 18px; height: 18px; flex: none; }
+.tool[aria-pressed="false"] { opacity: .55; }
+#btn-auto[aria-pressed="true"] { color: var(--pouch); opacity: 1; }
+#btn-bell.rang svg { animation: ding .5s ease; transform-origin: 50% 10%; }
+@keyframes ding { 20% { transform: rotate(18deg); } 45% { transform: rotate(-14deg); } 70% { transform: rotate(8deg); } }
+
+/* ---------- 键位提示 ---------- */
+#hints { position: fixed; left: max(24px, env(safe-area-inset-left)); bottom: 86px; z-index: 5; font-size: 12px; line-height: 2.1; opacity: 0; transition: opacity .8s ease; pointer-events: none;
+  text-shadow: 0 1px 8px rgba(8, 30, 38, .7); max-width: 190px; }
+body.started #hints { opacity: .9; transition-delay: 1.5s; }
+body.started #hints.used { opacity: 0; transition-delay: 8s; transition-duration: 1.5s; }
+kbd { display: inline-block; min-width: 22px; padding: 0 6px; margin-right: 6px; border-radius: 5px; font-family: var(--digits); font-size: 12px; line-height: 20px; text-align: center;
+  background: rgba(244, 246, 244, .16); border: 1px solid rgba(244, 246, 244, .35); border-bottom-width: 2px; }
+
+/* ---------- 触屏按钮 ---------- */
+#touch { display: none; }
+body.touch.started #touch { display: flex; position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: 96px; z-index: 6; gap: 12px; align-items: flex-end; }
+#touch button { width: 64px; height: 64px; border-radius: 50%; border: 0; font-family: var(--serif); font-size: 22px; font-weight: 700; touch-action: none; user-select: none; -webkit-user-select: none;
+  box-shadow: 0 8px 20px rgba(5, 20, 25, .35); }
+#btn-pedal { width: 84px !important; height: 84px !important; background: var(--pouch); color: var(--tide); font-size: 28px !important; }
+#btn-brake { background: rgba(18, 49, 59, .85); color: var(--feather); }
+#btn-bell-touch { background: rgba(244, 246, 244, .9); color: var(--tide); width: 52px !important; height: 52px !important; font-size: 18px !important; }
+#touch button.down { transform: scale(.94); filter: brightness(1.1); }
+
+/* ---------- 提示与闪光 ---------- */
+#toast { position: fixed; top: max(74px, calc(env(safe-area-inset-top) + 50px)); left: 50%; transform: translate(-50%, -8px); z-index: 20; padding: 9px 16px; border-radius: 12px;
+  background: rgba(18, 49, 59, .86); font-size: 14px; opacity: 0; transition: opacity .3s ease, transform .3s ease; pointer-events: none; white-space: nowrap; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+#flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 30; }
+#flash.on { animation: flash .6s ease-out; }
+@keyframes flash { 0% { opacity: .85; } 100% { opacity: 0; } }
+
+body.hide-ui #title, body.hide-ui #computer, body.hide-ui #dock, body.hide-ui #hints, body.hide-ui #touch, body.hide-ui #shot { opacity: 0 !important; pointer-events: none !important; transition-delay: 0s !important; }
+body.hide-ui #dock { visibility: hidden; }
+#photo-view { position: fixed; inset: 0; z-index: 40; background: rgba(10, 30, 36, .82); display: grid; place-items: center; padding: 24px; }
+#photo-view[hidden] { display: none; }
+#photo-view img { max-width: 100%; max-height: 80vh; border-radius: 10px; box-shadow: 0 20px 50px rgba(0, 0, 0, .5); -webkit-touch-callout: default; }
+#photo-view p { margin: 14px 0 0; font-size: 14px; opacity: .85; text-align: center; }
+
+@media (max-width: 1320px) { .tool .lbl { display: none; } }
+@media (max-width: 1100px) { .slider span { display: none; } input[type=range] { width: 84px; } .seg button { padding: 7px 9px; } }
+@media (max-width: 900px) {
+  #computer { width: 142px; }
+  .big { font-size: 38px; }
+  .stats .lab { display: none; }
+  .unit.n { display: inline; }
+  .screen { padding: 8px 9px 7px; }
+  .stats b, .bottom b { font-size: 14px; }
+  #title h1 { font-size: 38px; }
+  #title .sub { display: none; }
+  #dock { flex-wrap: wrap; justify-content: center; bottom: max(10px, env(safe-area-inset-bottom)); width: calc(100vw - 20px); }
+  .divider { display: none; }
+  .slider span { display: none; }
+  input[type=range] { width: 90px; }
+  #hints { display: none; }
+  body.touch.started #touch { bottom: 150px; }
+  #btn-quality, #btn-hide { display: none !important; }
+}
+@media (max-width: 520px) {
+  #shot { top: auto; bottom: 170px; }
+  #intro { right: 24px; max-width: none; }
+}
+@media (max-height: 500px) {
+  #computer { width: 132px; top: 10px; right: 10px; }
+  #computer #map, #computer .brand { display: none; }
+  .big { font-size: 34px; }
+  #title h1 { font-size: 30px; }
+  #title .sub { display: none; }
+  body.touch.started #touch { bottom: 84px; }
+  #touch button { width: 54px; height: 54px; }
+  #btn-pedal { width: 70px !important; height: 70px !important; }
+  #intro { bottom: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; transition-delay: 0s !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="scene" role="img" aria-label="3D 场景：鹈鹕骑自行车环岛" tabindex="-1"></canvas>
+
+<div id="loader" role="status">
+  <div class="mark">
+    <div class="wheel" aria-hidden="true"></div>
+    <p id="loader-text">正在准备海岛…</p>
+    <h2>鹈鹕骑车</h2>
+  </div>
+</div>
+
+<header id="title">
+  <h1>鹈鹕骑车</h1>
+  <span class="rule" aria-hidden="true"></span>
+  <p class="sub">沿海岛公路兜风一圈</p>
+</header>
+
+<section id="intro">
+  <p>头盔戴好了，围巾系紧了，篮子里还有三条鱼。</p>
+  <button id="btn-start">出发</button>
+  <p class="small">出发后会有声音，右下角可以关掉</p>
+</section>
+
+<aside id="computer" aria-label="自行车码表">
+  <div class="bezel">
+    <div class="screen">
+      <div class="row"><span class="lab">速度</span><span class="unit">km/h</span></div>
+      <div class="big" aria-live="off"><span id="spd">0.0</span></div>
+      <div class="row stats">
+        <div><span class="lab">踏频</span><b id="cad">0</b><span class="unit n">rpm</span></div>
+        <div><span class="lab">里程</span><b id="dst">0.00</b><span class="unit">km</span></div>
+      </div>
+      <canvas id="map" width="104" height="78" aria-label="海岛小地图"></canvas>
+      <div class="row bottom"><b id="clk">17:24</b><span id="coast">滑行</span></div>
+    </div>
+    <div class="brand" aria-hidden="true">PELICAN</div>
+  </div>
+</aside>
+
+<div id="shot" aria-live="polite"></div>
+
+<nav id="dock" aria-label="控制">
+  <div class="seg" role="group" aria-label="镜头">
+    <button data-cam="chase" aria-pressed="true" title="跟随镜头（1）">跟随</button>
+    <button data-cam="orbit" aria-pressed="false" title="拖动环绕（2）">环绕</button>
+    <button data-cam="cinema" aria-pressed="false" title="自动切换电影镜头（3）">电影</button>
+    <button data-cam="pov" aria-pressed="false" title="鹈鹕的第一人称（4）">鹈鹕视角</button>
+  </div>
+  <span class="divider" aria-hidden="true"></span>
+  <label class="slider" title="拖动改变一天中的时间（[ 和 ] 键微调）"><span>时间</span><input id="time" type="range" min="0" max="23.99" step="0.01" value="17.4" aria-label="时间"><output id="time-out">17:24</output></label>
+  <button id="btn-auto" class="tool" aria-pressed="false" title="日夜循环（T）" aria-label="日夜循环">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/></svg>
+  </button>
+  <label class="slider" title="平时的骑行速度"><span>巡航</span><input id="cruise" type="range" min="0" max="30" step="1" value="18" aria-label="巡航速度"><output id="cruise-out">18 km/h</output></label>
+  <span class="divider" aria-hidden="true"></span>
+  <button id="btn-bell" class="tool" title="按车铃（空格）">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16v-4a6 6 0 0 1 12 0v4l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/><path d="M12 4V3"/></svg>
+    <span class="lbl">车铃</span>
+  </button>
+  <button id="btn-sound" class="tool" aria-pressed="true" title="声音开关（M）">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+    <span class="lbl">声音</span>
+  </button>
+  <button id="btn-music" class="tool" aria-pressed="true" title="背景小曲">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>
+    <span class="lbl">小曲</span>
+  </button>
+  <button id="btn-photo" class="tool" title="拍照并下载（P）">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+    <span class="lbl">拍照</span>
+  </button>
+  <button id="btn-quality" class="tool" aria-pressed="true" title="画质切换">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>
+    <span class="lbl">高画质</span>
+  </button>
+  <button id="btn-hide" class="tool" title="隐藏界面（H）">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M3 21 21 3"/></svg>
+    <span class="lbl">隐藏界面</span>
+  </button>
+</nav>
+
+<div id="hints" aria-hidden="true">
+  <div><kbd>W</kbd>用力蹬</div>
+  <div><kbd>S</kbd>刹车</div>
+  <div><kbd>空格</kbd>按车铃</div>
+  <div><kbd>C</kbd>换镜头</div>
+  <div><kbd>G</kbd>或点鹈鹕，打个招呼</div>
+</div>
+
+<div id="touch">
+  <button id="btn-brake" aria-label="按住刹车">刹</button>
+  <button id="btn-bell-touch" aria-label="按车铃">铃</button>
+  <button id="btn-pedal" aria-label="按住用力蹬">蹬</button>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="photo-view" hidden><div><img alt="刚拍的鹈鹕照片"><p>长按图片保存，点任意处关闭</p></div></div>
+<div id="flash" aria-hidden="true"></div>
+
+<script>/*__BUNDLE__*/</script>
+</body>
+</html>
